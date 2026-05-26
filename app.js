@@ -7,6 +7,8 @@ const cookieParser = require('cookie-parser');
 const ejsLayouts   = require('express-ejs-layouts');
 const sequelize    = require('./config/database');
 const { Product, Order, OrderItem } = require('./models');
+const storeAuthRoutes = require('./routes/storeAuth');
+const { attachLocals } = require('./middleware/authMiddleware');
 
 const productRoutes  = require('./routes/products');
 const cartRoutes     = require('./routes/cart');
@@ -14,6 +16,8 @@ const checkoutRoutes = require('./routes/checkout');
 
 const app  = express();
 const port = process.env.PORT || 3000;
+
+const userAuthRoutes = require('./routes/userAuth');
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -30,6 +34,7 @@ app.use(session({
   saveUninitialized: false,
   cookie: { maxAge: 3600000 }
 }));
+app.use(attachLocals);
 
 // Middleware: carrito vacio en sesion si no existe
 app.use((req, res, next) => {
@@ -39,6 +44,14 @@ app.use((req, res, next) => {
   res.locals.cartItemCount = req.session.cart.totalQty || 0;
   next();
 });
+
+app.use(['/store/login', '/store/register',
+         '/user/login',  '/user/register',
+         '/store-admin', '/customer'],
+  (req, res, next) => { res.locals.layout = false; next(); }
+);
+
+app.use('/store', storeAuthRoutes);
 
 /*
 app.get('/', (req, res) => {
@@ -50,6 +63,7 @@ app.get('/', (req, res) => {
 });
 */
 
+app.use('/user', userAuthRoutes);
 app.use('/',         productRoutes);
 app.use('/cart',     cartRoutes);
 app.use('/checkout', checkoutRoutes);
